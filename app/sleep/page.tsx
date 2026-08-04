@@ -49,3 +49,13 @@ export default function Sleep() {
                   <YAxis tick={{ fill: "#8A93A5", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ background: "#171C22", border: "1px solid #242B33", borderRadius: 12, color: "#EDEFF3" }} cursor={{ fill: "#242B33", opacity: 0.4 }} />
                   <ReferenceLine y={8} stroke="#31404F" strokeDasharray="4 4" />
+                  <Bar dataKey="hours" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
