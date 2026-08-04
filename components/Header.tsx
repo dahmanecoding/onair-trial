@@ -19,7 +19,7 @@ export default function Header() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M15 18l-6-6 6-6" />
         </svg>
-        <span className="font-display text-[11px] font-bold tracking-[0.15em] text-white">TODAY</span>
+        <span className="font-display text-[11px] font-bold tracking-[0.15em] text-white uppercase">{title || "TODAY"}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 18l6-6-6-6" />
         </svg>
