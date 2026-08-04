@@ -8,15 +8,15 @@ export function dayStrain(
   // 1. Cardiovascular Load (Heart Rate Zones & Nonlinear Weighting)
   const maxHeartRate = 190; // Defaulting to 190 as we don't store age/max HR yet
   const hrr = maxHeartRate - restingHeartRate;
-  const threshold = restingHeartRate + 0.3 * hrr;
 
   let cardioLoad = 0;
   for (const sample of samples) {
-    if (sample.bpm > threshold) {
-      // Calculate reserve intensity (0.3 to 1.0)
+    if (sample.bpm > restingHeartRate) {
+      // Calculate reserve intensity (0 to 1.0)
       const reserveIntensity = (sample.bpm - restingHeartRate) / hrr;
       // Nonlinear weighting: higher zones impact the score disproportionately
-      cardioLoad += Math.pow(reserveIntensity, 3);
+      // Adding a tiny base load so even low-level activity adds up over a 24h period
+      cardioLoad += Math.pow(reserveIntensity, 3) + 0.005;
     }
   }
   cardioLoad = cardioLoad * 4.5; // Scale factor
