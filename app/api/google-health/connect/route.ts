@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   }
 
   const token = req.nextUrl.searchParams.get("token") ?? "";
-  const target = new URL(`${supabaseUrl}/functions/v1/fitbit-oauth`);
+  const target = new URL(`${supabaseUrl}/functions/v1/google-health-oauth`);
   target.searchParams.set("action", "start");
   if (token) target.searchParams.set("token", token);
 
