@@ -22,9 +22,8 @@ export default function Today() {
   const [recovery, setRecovery] = useState<Recovery | null>(null);
   const [sleep, setSleep] = useState<any | null>(null);
   const [strain, setStrain] = useState<number | null>(null);
-  const [inRange, setInRange] = useState<{ ok: number; total: number } | null>(null);
-  const [week, setWeek] = useState({ n: 0, min: 0 });
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [latestHr, setLatestHr] = useState<number | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -42,20 +41,16 @@ export default function Today() {
 
       setRecovery(readiness?.[0] ?? null);
       setSleep(sleeps?.[0] ?? null);
+      
       const series = (metric: string) => (metrics ?? []).filter((item) => item.metric === metric).map((item) => Number(item.value));
-      const inBaselineRange = (values: number[]) => {
-        if (values.length < 8) return null;
-        const latest = values.at(-1)!;
-        const baseline = values.slice(0, -1).reduce((total, value) => total + value, 0) / (values.length - 1);
-        return Math.abs(latest - baseline) <= baseline * 0.1;
-      };
-      const checks = [inBaselineRange(series("hrv")), inBaselineRange(series("resting_hr"))].filter((value): value is boolean => value !== null);
-      setInRange(checks.length ? { ok: checks.filter(Boolean).length, total: checks.length } : null);
+      const restingRates = series("resting_hr");
       
       const thisWeek = workouts ?? [];
       const todayActivities = thisWeek.filter((item) => item.start_at.slice(0, 10) === today);
-      const restingRates = series("resting_hr");
       setStrain(dayStrain(heartRate ?? [], restingRates.at(-1) ?? null, todayActivities));
+      if (heartRate && heartRate.length > 0) {
+        setLatestHr(heartRate[heartRate.length - 1].bpm);
+      }
 
       setWeek({ n: thisWeek.length, min: Math.round(thisWeek.reduce((total, item) => total + (item.duration_sec ?? 0), 0) / 60) });
       setActivities(todayActivities);
@@ -82,7 +77,7 @@ export default function Today() {
       <p className="mt-3 text-center text-sm text-muted">{verdict(recovery?.score ?? null)}</p>
 
       <section className="mt-7 grid grid-cols-2 gap-3">
-        <button onClick={() => router.push("/heart")} className="text-left"><Card className="h-full transition-colors hover:bg-white/[.05]"><p className="eyebrow">HEALTH MONITOR</p>{inRange ? <div className="mt-3"><p className="font-display text-base font-bold" style={{ color: inRange.ok === inRange.total ? "#3DE24B" : "#FFDE33" }}>{inRange.ok === inRange.total ? "Within range" : "Check trends"}</p><p className="mt-1 font-mono text-[11px] text-muted">{inRange.ok}/{inRange.total} metrics steady</p></div> : <p className="mt-3 text-sm text-muted">Calibrating…</p>}</Card></button>
+        <button onClick={() => router.push("/heart")} className="text-left"><Card className="h-full transition-colors hover:bg-white/[.05]"><p className="eyebrow">CURRENT HR</p><div className="mt-3"><p className="font-display text-xl font-bold">{latestHr ?? "—"} <span className="text-sm font-normal text-muted">bpm</span></p><p className="mt-1 font-mono text-[11px] text-muted">{latestHr ? "Latest reading" : "No data today"}</p></div></Card></button>
         <button onClick={() => router.push("/workouts")} className="text-left"><Card tone="blue" className="h-full transition-colors hover:bg-white/[.05]"><p className="eyebrow">THIS WEEK</p><p className="mt-3 font-display text-xl font-bold">{week.n} <span className="text-sm font-normal text-muted">sessions</span></p><p className="mt-1 font-mono text-[11px] text-muted">{week.min} MIN TOTAL</p></Card></button>
       </section>
 
