@@ -1,4 +1,4 @@
-export default function Header({ title }: { title?: string })
+export default function Header({ title }: { title?: string }) {
   return (
     <header className="flex h-16 items-center justify-between px-2 pt-2 pb-2">
       {/* Left: Profile & Streak */}
@@ -43,5 +43,5 @@ export default function Header({ title }: { title?: string })
         </svg>
       </div>
     </header>
-  )
+  );
 }
