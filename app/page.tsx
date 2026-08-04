@@ -51,12 +51,14 @@ export default function Today() {
       };
       const checks = [inBaselineRange(series("hrv")), inBaselineRange(series("resting_hr"))].filter((value): value is boolean => value !== null);
       setInRange(checks.length ? { ok: checks.filter(Boolean).length, total: checks.length } : null);
-      const restingRates = series("resting_hr");
-      setStrain(dayStrain(heartRate ?? [], restingRates.at(-1) ?? null));
-
+      
       const thisWeek = workouts ?? [];
+      const todayActivities = thisWeek.filter((item) => item.start_at.slice(0, 10) === today);
+      const restingRates = series("resting_hr");
+      setStrain(dayStrain(heartRate ?? [], restingRates.at(-1) ?? null, todayActivities));
+
       setWeek({ n: thisWeek.length, min: Math.round(thisWeek.reduce((total, item) => total + (item.duration_sec ?? 0), 0) / 60) });
-      setActivities(thisWeek.filter((item) => item.start_at.slice(0, 10) === today));
+      setActivities(todayActivities);
       setLoaded(true);
     })();
   }, []);
@@ -71,7 +73,7 @@ export default function Today() {
         <div className="absolute top-4 h-64 w-64 rounded-full bg-strain/15 blur-3xl" />
         <div className="relative z-10 flex w-full items-end justify-between px-1">
           <Ring pct={sleepValue == null ? null : sleepValue / 100} display={sleepValue == null ? "—" : String(sleepValue)} unit={sleepValue == null ? "" : "%"} label="Sleep" color="#8FB8D8" size={98} stroke={8} onClick={() => router.push("/sleep")} dim />
-          <Ring pct={recovery?.score == null ? null : recovery.score / 100} display={recovery?.score == null ? "—" : String(recovery.score)} unit={recovery?.score == null ? "" : "%"} label="Recovery" color={scoreColor(recovery?.score)} size={98} stroke={8} onClick={() => setRecoveryOpen(true)} dim />
+          <Ring pct={recovery?.score == null ? null : recovery.score / 100} display={recovery?.score == null ? "—" : ((recovery.score / 100) * 21).toFixed(1)} unit="" label="Recovery" color={scoreColor(recovery?.score)} size={98} stroke={8} onClick={() => setRecoveryOpen(true)} dim />
         </div>
         <div className="relative z-10 -mt-1">
           <Ring pct={strain == null ? null : strain / 21} display={strain == null ? "—" : strain.toFixed(1)} label="Day strain" color="#2E9BFF" size={218} stroke={15} onClick={() => router.push("/workouts")} />
@@ -90,6 +92,6 @@ export default function Today() {
         {!sleep && activities.length === 0 && <li className="text-sm text-muted">Nothing yet — activities and sleep appear here after your first sync.</li>}
       </ul></Card>
     </>}
-    <BottomSheet open={recoveryOpen} onClose={() => setRecoveryOpen(false)}><SectionTitle action={<button onClick={() => setRecoveryOpen(false)} className="text-xs text-muted">Close</button>}>RECOVERY BREAKDOWN</SectionTitle>{recovery ? <div className="mt-6 space-y-4">{[["HRV", recovery.hrv_component, "50%"], ["Sleep", recovery.sleep_component, "30%"], ["Resting HR", recovery.rhr_component, "20%"]].map(([label, value, weight]) => <div key={label as string} className="flex items-center gap-3"><span className="w-24 font-mono text-[11px] tracking-wider text-muted">{String(label).toUpperCase()}</span><div className="h-1.5 flex-1 overflow-hidden rounded bg-hair"><div className="h-full rounded" style={{ width: `${value ?? 0}%`, background: scoreColor(value as number) }} /></div><span className="w-14 text-right font-mono text-xs">{value == null ? "n/a" : Math.round(value as number)} <span className="text-muted">· {weight}</span></span></div>)}<p className="pt-1 text-[11px] text-muted">Compared with your own 30-day baseline. Missing inputs are re-weighted automatically.</p></div> : <p className="mt-5 text-sm text-muted">Recovery will appear after your first sync.</p>}</BottomSheet>
+    <BottomSheet open={recoveryOpen} onClose={() => setRecoveryOpen(false)}><SectionTitle action={<button onClick={() => setRecoveryOpen(false)} className="text-xs text-muted">Close</button>}>RECOVERY BREAKDOWN</SectionTitle>{recovery ? <div className="mt-6 space-y-4">{[["HRV", recovery.hrv_component, "50%"], ["Sleep", recovery.sleep_component, "30%"], ["Resting HR", recovery.rhr_component, "20%"]].map(([label, value, weight]) => <div key={label as string} className="flex items-center gap-3"><span className="w-24 font-mono text-[11px] tracking-wider text-muted">{String(label).toUpperCase()}</span><div className="h-1.5 flex-1 overflow-hidden rounded bg-hair"><div className="h-full rounded" style={{ width: `${value ?? 0}%`, background: scoreColor(value as number) }} /></div><span className="w-14 text-right font-mono text-xs">{value == null ? "n/a" : ((value as number) / 100 * 21).toFixed(1)} <span className="text-muted">· {weight}</span></span></div>)}<p className="pt-1 text-[11px] text-muted">Compared with your own 30-day baseline. Max score is 21.</p></div> : <p className="mt-5 text-sm text-muted">Recovery will appear after your first sync.</p>}</BottomSheet>
   </>;
 }
