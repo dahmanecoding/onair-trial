@@ -43,10 +43,26 @@ export default function Heart() {
       .then(({ data }) => setIntra((data ?? []).map((p) => ({ d: p.ts.slice(11, 16), v: p.bpm }))));
   }, []);
   const avg = (xs: any[]) => (xs.length ? xs.reduce((a, b) => a + b.v, 0) / xs.length : undefined);
+  
+  const inBaselineRange = (values: number[]) => {
+    if (values.length < 8) return null;
+    const latest = values.at(-1)!;
+    const baseline = values.slice(0, -1).reduce((total, value) => total + value, 0) / (values.length - 1);
+    return Math.abs(latest - baseline) <= baseline * 0.1;
+  };
+  const hrvValues = hrv.map(x => x.v);
+  const rhrValues = rhr.map(x => x.v);
+  const checks = [inBaselineRange(hrvValues), inBaselineRange(rhrValues)].filter((value): value is boolean => value !== null);
+  const inRange = checks.length ? { ok: checks.filter(Boolean).length, total: checks.length } : null;
+
   return (
     <>
       <Header title="Heart" />
       <div className="space-y-4">
+        <div className="soft-panel rounded-[1.5rem] p-5">
+          <p className="eyebrow">HEALTH MONITOR</p>
+          {inRange ? <div className="mt-3"><p className="font-display text-base font-bold" style={{ color: inRange.ok === inRange.total ? "#3DE24B" : "#FFDE33" }}>{inRange.ok === inRange.total ? "Within range" : "Check trends"}</p><p className="mt-1 font-mono text-[11px] text-muted">{inRange.ok}/{inRange.total} metrics steady against baseline</p></div> : <p className="mt-3 text-sm text-muted">Calibrating… needs 7 days of data.</p>}
+        </div>
         <Trend title="NIGHTLY HRV · 30D" unit="ms" data={hrv} base={avg(hrv)} color="#3DE24B" />
         <Trend title="RESTING HR · 30D" unit="bpm" data={rhr} base={avg(rhr)} color="#FF4E42" />
         <Trend title="HEART RATE · TODAY" unit="bpm" data={intra} base={undefined} color="#8FB8D8" />
