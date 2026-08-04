@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) return null;
-    return createClient(url, key);
-  }, []);
 
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -21,11 +15,6 @@ export default function SettingsPage() {
     let mounted = true;
 
     async function load() {
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
-
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
 
@@ -39,11 +28,9 @@ export default function SettingsPage() {
     return () => {
       mounted = false;
     };
-  }, [supabase]);
+  }, []);
 
   async function handleConnect() {
-    if (!supabase) return;
-
     const { data: refreshed } = await supabase.auth.refreshSession();
     const token = refreshed.session?.access_token;
 
