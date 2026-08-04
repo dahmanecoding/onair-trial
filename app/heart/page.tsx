@@ -1,73 +1,93 @@
 "use client";
+
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/Header";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceArea } from "recharts";
+import Ring from "@/components/Ring";
+import BottomSheet from "@/components/ui/BottomSheet";
+import Card from "@/components/ui/Card";
+import MetricPill from "@/components/ui/MetricPill";
+import SectionTitle from "@/components/ui/SectionTitle";
+import { dayStrain } from "@/lib/algorithms/strain";
+import { sleepScore } from "@/lib/algorithms/sleep";
+import { hm, scoreColor, verdict } from "@/lib/format";
 
-function Trend({ title, unit, data, base, color }: any) {
-  return (
-    <div className="soft-panel rounded-[1.5rem] p-5">
-      <p className="font-mono text-[11px] tracking-[0.2em] text-muted">{title}</p>
-      {data.length === 0 ? <p className="mt-2 text-sm text-muted">No data yet.</p> : (
-        <div className="mt-2 h-40">
-          <ResponsiveContainer>
-            <LineChart data={data} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
-              <XAxis dataKey="d" tick={{ fill: "#8A93A5", fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={24} />
-              <YAxis tick={{ fill: "#8A93A5", fontSize: 10 }} axisLine={false} tickLine={false} domain={["dataMin - 4", "dataMax + 4"]} />
-              <Tooltip contentStyle={{ background: "#171C22", border: "1px solid #242B33", borderRadius: 12, color: "#EDEFF3" }} formatter={(v: any) => [`${v} ${unit}`, title]} />
-              {base && <ReferenceArea y1={base * 0.97} y2={base * 1.03} fill="#242B33" fillOpacity={0.5} />}
-              <Line type="monotone" dataKey="v" stroke={color} strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </div>
-  );
-}
+type Activity = { id: number; activity_type?: string; duration_sec?: number; start_at: string; avg_hr?: number };
+type Recovery = { score?: number; hrv_component?: number; sleep_component?: number; rhr_component?: number };
+const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" });
 
-export default function Heart() {
-  const [hrv, setHrv] = useState<any[]>([]);
-  const [rhr, setRhr] = useState<any[]>([]);
-  const [intra, setIntra] = useState<any[]>([]);
+export default function Today() {
+  const router = useRouter();
+  const [recovery, setRecovery] = useState<Recovery | null>(null);
+  const [sleep, setSleep] = useState<any | null>(null);
+  const [strain, setStrain] = useState<number | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [latestHr, setLatestHr] = useState<number | null>(null);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [week, setWeek] = useState({ n: 0, min: 0 });
+  const [loaded, setLoaded] = useState(false);
+
   useEffect(() => {
-    const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-    supabase.from("daily_metrics").select("date, metric, value").gte("date", since)
-      .in("metric", ["hrv", "resting_hr"]).order("date")
-      .then(({ data }) => {
-        const f = (m: string) => (data ?? []).filter((x) => x.metric === m)
-          .map((x) => ({ d: x.date.slice(5), v: Number(x.value) }));
-        setHrv(f("hrv")); setRhr(f("resting_hr"));
-      });
-    const last24h = new Date(Date.now() - 86400000).toISOString();
-    supabase.from("hr_intraday").select("ts, bpm").gte("ts", last24h).order("ts")
-      .then(({ data }) => setIntra((data ?? []).map((p) => ({ d: p.ts.slice(11, 16), v: p.bpm }))));
-  }, []);
-  const avg = (xs: any[]) => (xs.length ? xs.reduce((a, b) => a + b.v, 0) / xs.length : undefined);
-  
-  const inBaselineRange = (values: number[]) => {
-    if (values.length < 8) return null;
-    const latest = values.at(-1)!;
-    const baseline = values.slice(0, -1).reduce((total, value) => total + value, 0) / (values.length - 1);
-    return Math.abs(latest - baseline) <= baseline * 0.1;
-  };
-  const hrvValues = hrv.map(x => x.v);
-  const rhrValues = rhr.map(x => x.v);
-  const checks = [inBaselineRange(hrvValues), inBaselineRange(rhrValues)].filter((value): value is boolean => value !== null);
-  const inRange = checks.length ? { ok: checks.filter(Boolean).length, total: checks.length } : null;
+    (async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const since30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const [{ data: readiness }, { data: sleeps }, { data: metrics }, { data: heartRate }, { data: workouts }] = await Promise.all([
+        supabase.from("readiness_scores").select("*").order("date", { ascending: false }).limit(1),
+        supabase.from("sleep_sessions").select("*").eq("is_main_sleep", true).order("end_at", { ascending: false }).limit(1),
+        supabase.from("daily_metrics").select("date, metric, value").gte("date", since30).in("metric", ["hrv", "resting_hr"]).order("date"),
+        supabase.from("hr_intraday").select("ts, bpm").gte("ts", `${today}T00:00:00Z`).order("ts"),
+        supabase.from("workouts").select("*").gte("start_at", new Date(Date.now() - 7 * 86400000).toISOString()).order("start_at", { ascending: false }),
+      ]);
 
-  return (
-    <>
-      <Header title="Heart" />
-      <div className="space-y-4">
-        <div className="soft-panel rounded-[1.5rem] p-5">
-          <p className="eyebrow">HEALTH MONITOR</p>
-          {inRange ? <div className="mt-3"><p className="font-display text-base font-bold" style={{ color: inRange.ok === inRange.total ? "#3DE24B" : "#FFDE33" }}>{inRange.ok === inRange.total ? "Within range" : "Check trends"}</p><p className="mt-1 font-mono text-[11px] text-muted">{inRange.ok}/{inRange.total} metrics steady against baseline</p></div> : <p className="mt-3 text-sm text-muted">Calibrating… needs 7 days of data.</p>}
+      setRecovery(readiness?.[0] ?? null);
+      setSleep(sleeps?.[0] ?? null);
+      
+      const series = (metric: string) => (metrics ?? []).filter((item) => item.metric === metric).map((item) => Number(item.value));
+      const restingRates = series("resting_hr");
+      
+      const thisWeek = workouts ?? [];
+      const todayActivities = thisWeek.filter((item) => item.start_at.slice(0, 10) === today);
+      setStrain(dayStrain(heartRate ?? [], restingRates.at(-1) ?? null, todayActivities));
+      if (heartRate && heartRate.length > 0) {
+        setLatestHr(heartRate[heartRate.length - 1].bpm);
+      }
+
+      setWeek({ n: thisWeek.length, min: Math.round(thisWeek.reduce((total, item) => total + (item.duration_sec ?? 0), 0) / 60) });
+      setActivities(todayActivities);
+      setLoaded(true);
+    })();
+  }, []);
+
+  const sleepValue = sleepScore(sleep);
+  const stageTotal = sleep ? (sleep.minutes_asleep ?? 0) + (sleep.minutes_awake ?? 0) : 1;
+
+  return <>
+    <Header title="Today" />
+    {!loaded ? <div className="mt-6 h-80 animate-pulse rounded-[2rem] bg-surface" /> : <>
+      <section className="relative -mt-4 flex flex-col items-center py-2">
+        <div className="absolute top-4 h-64 w-64 rounded-full bg-strain/15 blur-3xl" />
+        <div className="relative z-10 flex w-full items-end justify-between px-1">
+          <Ring pct={sleepValue == null ? null : sleepValue / 100} display={sleepValue == null ? "—" : String(sleepValue)} unit={sleepValue == null ? "" : "%"} label="Sleep" color="#8FB8D8" size={98} stroke={8} onClick={() => router.push("/sleep")} dim />
+          <Ring pct={recovery?.score == null ? null : recovery.score / 100} display={recovery?.score == null ? "—" : String(recovery.score)} unit={recovery?.score == null ? "" : "%"} label="Recovery" color={scoreColor(recovery?.score)} size={98} stroke={8} onClick={() => setRecoveryOpen(true)} dim />
         </div>
-        <Trend title="NIGHTLY HRV · 30D" unit="ms" data={hrv} base={avg(hrv)} color="#3DE24B" />
-        <Trend title="RESTING HR · 30D" unit="bpm" data={rhr} base={avg(rhr)} color="#FF4E42" />
-        <Trend title="HEART RATE · 24H" unit="bpm" data={intra} base={undefined} color="#8FB8D8" />
-        <p className="text-[11px] text-muted">Shaded band = your 30-day baseline zone. Today's curve shows the granularity that survives the pipeline; if it looks sparse, the source only shared summaries for that period.</p>
-      </div>
-    </>
-  );
+        <div className="relative z-10 -mt-1">
+          <Ring pct={strain == null ? null : strain / 21} display={strain == null ? "—" : strain.toFixed(1)} label="Day strain" color="#2E9BFF" size={218} stroke={15} onClick={() => router.push("/workouts")} />
+        </div>
+      </section>
+      <p className="mt-3 text-center text-sm text-muted">{verdict(recovery?.score ?? null)}</p>
+
+      <section className="mt-7 grid grid-cols-2 gap-3">
+        <button onClick={() => router.push("/heart")} className="text-left"><Card className="h-full transition-colors hover:bg-white/[.05]"><p className="eyebrow">CURRENT HR</p><div className="mt-3"><p className="font-display text-xl font-bold">{latestHr ?? "—"} <span className="text-sm font-normal text-muted">bpm</span></p><p className="mt-1 font-mono text-[11px] text-muted">{latestHr ? "Latest reading" : "No data today"}</p></div></Card></button>
+        <button onClick={() => router.push("/workouts")} className="text-left"><Card tone="blue" className="h-full transition-colors hover:bg-white/[.05]"><p className="eyebrow">THIS WEEK</p><p className="mt-3 font-display text-xl font-bold">{week.n} <span className="text-sm font-normal text-muted">sessions</span></p><p className="mt-1 font-mono text-[11px] text-muted">{week.min} MIN TOTAL</p></Card></button>
+      </section>
+
+      <Card className="mt-5"><SectionTitle action={<span className="font-mono text-[10px] tracking-wider text-muted">TIMELINE</span>}>TODAY&apos;S ACTIVITIES</SectionTitle><ul className="mt-4 divide-y divide-hair/60">
+        {sleep && <li className="py-3 first:pt-0"><button onClick={() => router.push("/sleep")} className="w-full"><div className="flex items-center gap-3"><MetricPill value={hm(sleep.minutes_asleep).replace(" ", "")} label="SLEEP" tone="ice" /><span className="flex-1 text-left font-mono text-[12px] tracking-[.15em]">SLEEP</span><span className="text-right font-mono text-[11px] leading-tight text-muted">{fmtTime(sleep.start_at)}<br />{fmtTime(sleep.end_at)}</span></div><div className="ml-1 mt-3 flex h-1.5 overflow-hidden rounded-full">{[["minutes_deep", "#8FB8D8"], ["minutes_rem", "#3DE24B"], ["minutes_light", "#31404F"], ["minutes_awake", "#FFDE33"]].map(([key, color]) => <div key={key} style={{ width: `${((sleep[key] ?? 0) / stageTotal) * 100}%`, background: color }} />)}</div></button></li>}
+        {activities.map((activity) => <li key={activity.id} className="py-3 last:pb-0"><button onClick={() => router.push("/workouts")} className="flex w-full items-center gap-3"><MetricPill value={`${Math.round((activity.duration_sec ?? 0) / 60)}m`} label="TRAIN" /><span className="flex-1 text-left font-mono text-[12px] tracking-[.15em]">{String(activity.activity_type ?? "ACTIVITY").toUpperCase()}</span><span className="text-right font-mono text-[11px] leading-tight text-muted">{fmtTime(activity.start_at)}{activity.avg_hr ? <><br />{activity.avg_hr} bpm</> : null}</span></button></li>)}
+        {!sleep && activities.length === 0 && <li className="text-sm text-muted">Nothing yet — activities and sleep appear here after your first sync.</li>}
+      </ul></Card>
+    </>}
+    <BottomSheet open={recoveryOpen} onClose={() => setRecoveryOpen(false)}><SectionTitle action={<button onClick={() => setRecoveryOpen(false)} className="text-xs text-muted">Close</button>}>RECOVERY BREAKDOWN</SectionTitle>{recovery ? <div className="mt-6 space-y-4">{[["HRV", recovery.hrv_component, "50%"], ["Sleep", recovery.sleep_component, "30%"], ["Resting HR", recovery.rhr_component, "20%"]].map(([label, value, weight]) => <div key={label as string} className="flex items-center gap-3"><span className="w-24 font-mono text-[11px] tracking-wider text-muted">{String(label).toUpperCase()}</span><div className="h-1.5 flex-1 overflow-hidden rounded bg-hair"><div className="h-full rounded" style={{ width: `${value ?? 0}%`, background: scoreColor(value as number) }} /></div><span className="w-14 text-right font-mono text-xs">{value == null ? "n/a" : `${value}%`} <span className="text-muted">· {weight}</span></span></div>)}<p className="pt-1 text-[11px] text-muted">Compared with your own 30-day baseline.</p></div> : <p className="mt-5 text-sm text-muted">Recovery will appear after your first sync.</p>}</BottomSheet>
+  </>;
 }
