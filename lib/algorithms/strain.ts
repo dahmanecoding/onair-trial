@@ -12,14 +12,12 @@ export function dayStrain(
   let cardioLoad = 0;
   for (const sample of samples) {
     if (sample.bpm > restingHeartRate) {
-      // Calculate reserve intensity (0 to 1.0)
+      // reserve intensity (0 to 1.0)
       const reserveIntensity = (sample.bpm - restingHeartRate) / hrr;
-      // Nonlinear weighting: higher zones impact the score disproportionately
-      // Adding a tiny base load so even low-level activity adds up over a 24h period
-      cardioLoad += Math.pow(reserveIntensity, 3) + 0.005;
+      // Exponentially weight higher heart rates, and add a baseline for normal activity
+      cardioLoad += Math.pow(reserveIntensity, 2.5) * 10 + 0.15;
     }
   }
-  cardioLoad = cardioLoad * 4.5; // Scale factor
 
   // 2. Muscular Load (Workout logging & Activity Tracking)
   let muscularLoad = 0;
@@ -28,11 +26,11 @@ export function dayStrain(
     const durationMins = (activity.duration_sec || 0) / 60;
     
     if (type.includes("strength") || type.includes("weight") || type.includes("lift")) {
-      muscularLoad += durationMins * 1.5; // High muscular load for resistance training
+      muscularLoad += durationMins * 2.0; // High muscular load for resistance training
     } else if (type.includes("hiit") || type.includes("yoga") || type.includes("pilates")) {
-      muscularLoad += durationMins * 1.0; // Moderate muscular load
+      muscularLoad += durationMins * 1.5; // Moderate muscular load
     } else {
-      muscularLoad += durationMins * 0.2; // Low muscular load for general cardio
+      muscularLoad += durationMins * 0.5; // Low muscular load for general cardio
     }
   }
 
