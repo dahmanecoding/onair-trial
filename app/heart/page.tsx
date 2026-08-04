@@ -38,8 +38,8 @@ export default function Heart() {
           .map((x) => ({ d: x.date.slice(5), v: Number(x.value) }));
         setHrv(f("hrv")); setRhr(f("resting_hr"));
       });
-    const today = new Date().toISOString().slice(0, 10);
-    supabase.from("hr_intraday").select("ts, bpm").gte("ts", today + "T00:00:00Z").order("ts")
+    const last24h = new Date(Date.now() - 86400000).toISOString();
+    supabase.from("hr_intraday").select("ts, bpm").gte("ts", last24h).order("ts")
       .then(({ data }) => setIntra((data ?? []).map((p) => ({ d: p.ts.slice(11, 16), v: p.bpm }))));
   }, []);
   const avg = (xs: any[]) => (xs.length ? xs.reduce((a, b) => a + b.v, 0) / xs.length : undefined);
@@ -65,7 +65,7 @@ export default function Heart() {
         </div>
         <Trend title="NIGHTLY HRV · 30D" unit="ms" data={hrv} base={avg(hrv)} color="#3DE24B" />
         <Trend title="RESTING HR · 30D" unit="bpm" data={rhr} base={avg(rhr)} color="#FF4E42" />
-        <Trend title="HEART RATE · TODAY" unit="bpm" data={intra} base={undefined} color="#8FB8D8" />
+        <Trend title="HEART RATE · 24H" unit="bpm" data={intra} base={undefined} color="#8FB8D8" />
         <p className="text-[11px] text-muted">Shaded band = your 30-day baseline zone. Today's curve shows the granularity that survives the pipeline; if it looks sparse, the source only shared summaries for that period.</p>
       </div>
     </>
