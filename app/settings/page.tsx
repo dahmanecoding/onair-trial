@@ -44,8 +44,8 @@ export default function SettingsPage() {
   async function handleConnect() {
     if (!supabase) return;
 
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    const token = refreshed.session?.access_token;
 
     if (!token) {
       router.push("/login");
@@ -88,4 +88,3 @@ export default function SettingsPage() {
     </main>
   );
 }
-}// PLACEHOLDER: fetched content needed here
