@@ -57,7 +57,7 @@ export default function Heart() {
 
   return (
     <>
-      <Header title="Heart" />
+      <Header />
       <div className="space-y-4">
         <div className="soft-panel rounded-[1.5rem] p-5">
           <p className="eyebrow">HEALTH MONITOR</p>
