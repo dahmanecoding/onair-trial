@@ -2,74 +2,38 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/Header";
-import { hm, dayLabel } from "@/lib/format";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine } from "recharts";
+import { sleepScore } from "@/lib/algorithms/sleep";
+import { hm, scoreColor, verdict } from "@/lib/format";
 
 export default function Sleep() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [range, setRange] = useState<7 | 30>(7);
+  const [sessions, setSessions] = useState<any[]>([]);
+  
   useEffect(() => {
-    const since = new Date(Date.now() - 32 * 86400000).toISOString();
-    supabase.from("sleep_sessions").select("*").eq("is_main_sleep", true)
-      .gte("end_at", since).order("end_at")
-      .then(({ data }) => setRows(data ?? []));
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
+    supabase.from("sleep_sessions").select("*").gte("end_at", since).order("end_at", { ascending: false })
+      .then(({ data }) => setSessions(data ?? []));
   }, []);
-
-  const view = rows.slice(-range).map((s) => ({
-    d: dayLabel(s.end_at.slice(0, 10)).split(" ")[0],
-    hours: +(s.minutes_asleep / 60).toFixed(2),
-    deep: s.minutes_deep, rem: s.minutes_rem, eff: s.efficiency,
-  }));
-  const avg = view.length ? view.reduce((a, b) => a + b.hours, 0) / view.length : 0;
-  const last = rows.at(-1);
 
   return (
     <>
-      <Header title="Sleep" />
-      <div className="mb-4 flex gap-2">
-        {[7, 30].map((r) => (
-          <button key={r} onClick={() => setRange(r as 7 | 30)}
-            className={`rounded-full border px-4 py-1 font-mono text-[11px] tracking-wider ${range === r ? "border-ink text-ink" : "border-hair text-muted"}`}>
-            {r}D
-          </button>
-        ))}
-      </div>
-      {rows.length === 0 ? (
-        <div className="soft-panel rounded-[1.5rem] p-6 text-sm text-muted">
-          No nights yet. Sleep with the band, let the Nilox app sync in the morning, and this fills in on its own.
-        </div>
-      ) : (
-        <>
-          <div className="soft-panel rounded-[1.5rem] p-5">
-            <p className="font-mono text-[11px] tracking-[0.2em] text-muted">DURATION · AVG {avg.toFixed(1)}H</p>
-            <div className="mt-2 h-48">
-              <ResponsiveContainer>
-                <BarChart data={view} margin={{ top: 8, right: 0, left: -28, bottom: 0 }}>
-                  <XAxis dataKey="d" tick={{ fill: "#8A93A5", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "#8A93A5", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: "#171C22", border: "1px solid #242B33", borderRadius: 12, color: "#EDEFF3" }} cursor={{ fill: "#242B33", opacity: 0.4 }} />
-                  <ReferenceLine y={8} stroke="#31404F" strokeDasharray="4 4" />
-                  <ReferenceLine y={avg} stroke="#8FB8D8" strokeDasharray="2 4" />
-                  <Bar dataKey="hours" fill="#8FB8D8" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          {last && (
-            <div className="soft-panel mt-5 rounded-[1.5rem] p-5">
-              <p className="font-mono text-[11px] tracking-[0.2em] text-muted">LATEST NIGHT · {dayLabel(last.end_at.slice(0, 10)).toUpperCase()}</p>
-              <div className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
-                <span className="text-muted">Asleep</span><span className="text-right font-mono">{hm(last.minutes_asleep)}</span>
-                <span className="text-muted">Deep</span><span className="text-right font-mono">{hm(last.minutes_deep)}</span>
-                <span className="text-muted">REM</span><span className="text-right font-mono">{hm(last.minutes_rem)}</span>
-                <span className="text-muted">Light</span><span className="text-right font-mono">{hm(last.minutes_light)}</span>
-                <span className="text-muted">Awake</span><span className="text-right font-mono">{hm(last.minutes_awake)}</span>
-                <span className="text-muted">Efficiency</span><span className="text-right font-mono">{last.efficiency ?? "—"}%</span>
+      <Header />
+      <div className="space-y-4">
+        {sessions.length === 0 ? <p className="text-muted">No sleep data recorded in the last 30 days.</p> : sessions.map((s) => {
+          const score = sleepScore(s);
+          return (
+            <div key={s.id} className="soft-panel flex items-center justify-between rounded-[1.5rem] p-5">
+              <div>
+                <p className="font-display text-lg font-bold text-ink">{hm(s.minutes_asleep)}</p>
+                <p className="mt-1 text-sm text-muted">{new Date(s.end_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</p>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="font-display text-2xl font-bold" style={{ color: scoreColor(score) }}>{score ?? "—"}</span>
+                {score && <span className="font-mono text-[10px] tracking-widest text-muted">{verdict(score, 70, 90).toUpperCase()}</span>}
               </div>
             </div>
-          )}
-        </>
-      )}
+          );
+        })}
+      </div>
     </>
   );
 }
