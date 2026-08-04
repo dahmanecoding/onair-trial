@@ -4,9 +4,9 @@
 
 :root {
   color-scheme: dark;
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-body: "Instrument Sans", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Proxima Nova", system-ui, sans-serif;
+  --font-body: "Proxima Nova", system-ui, sans-serif;
+  --font-mono: "DINPro", ui-monospace, monospace;
 }
 html, body { background: #090D12; }
 body {
