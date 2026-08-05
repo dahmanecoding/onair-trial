@@ -104,7 +104,7 @@ export default function EdgePage() {
           <div className="glass shadow-xl p-6 py-10 relative flex justify-center items-center h-[340px] overflow-hidden">
             {/* Background decorative rings */}
             <div className="absolute w-64 h-64 border border-white/10 dark:border-white/5 rounded-full ring-bg"></div>
-            <div class="absolute w-48 h-48 border border-white/10 dark:border-white/5 rounded-full ring-bg"></div>
+            <div className="absolute w-48 h-48 border border-white/10 dark:border-white/5 rounded-full ring-bg"></div>
             
             {/* Central Arc */}
             <div className="relative w-40 h-40 flex flex-col items-center justify-center z-10 cursor-pointer" onClick={() => router.push("/body")}>
