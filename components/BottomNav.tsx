@@ -7,6 +7,8 @@ import { Sun, Moon, Heart, Activity, Play } from "lucide-react";
 export default function BottomNav() {
   const pathname = usePathname();
 
+  if (pathname === "/auth") return null;
+
   const links = [
     { href: "/", label: "Edge", icon: Sun },
     { href: "/sleep", label: "Sleep", icon: Moon },
