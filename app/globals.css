@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-mesh-dark: #080A0F;
+    --bg-mesh-light: #F8FAFC;
+  }
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+/* Mesh Gradients */
+.bg-mesh {
+  transition: background 0.5s ease, color 0.5s ease;
+}
+
+.dark .bg-mesh {
+  background: radial-gradient(at 0% 0%, hsla(225, 49%, 15%, 1) 0, transparent 50%), 
+              radial-gradient(at 80% 10%, hsla(253, 36%, 12%, 1) 0, transparent 50%), 
+              radial-gradient(at 50% 100%, hsla(200, 49%, 20%, 1) 0, transparent 50%);
+  background-color: var(--bg-mesh-dark);
+}
+
+.light .bg-mesh, html:not(.dark) .bg-mesh {
+  background: radial-gradient(at 0% 0%, hsla(210, 100%, 95%, 1) 0, transparent 50%), 
+              radial-gradient(at 80% 10%, hsla(280, 100%, 95%, 1) 0, transparent 50%), 
+              radial-gradient(at 50% 100%, hsla(190, 100%, 90%, 1) 0, transparent 50%);
+  background-color: var(--bg-mesh-light);
+}
+
+/* Liquid Glass Utilities */
+.glass {
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-radius: 28px;
+  transition: all 0.3s ease;
+}
+
+.dark .glass {
+  background: rgba(30, 32, 40, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+.light .glass, html:not(.dark) .glass {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 10px 40px -10px rgba(31, 38, 135, 0.1), inset 0 1px 1px rgba(255, 255, 255, 1);
+}
+
+.glass-pill {
+  border-radius: 9999px;
+}
+
+/* Base Interactions */
+* { -webkit-tap-highlight-color: transparent; }
+button, a { transition: transform 180ms ease, opacity 180ms ease, background-color 180ms ease, box-shadow 180ms ease; }
+button:active, a:active { transform: scale(0.95); }
+
+/* Custom utility for active nav buttons */
+.nav-active {
+  background: rgba(255,255,255,0.15);
+}
+.light .nav-active, html:not(.dark) .nav-active {
+  background: rgba(0,0,0,0.08);
+}
+
+/* Animations */
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.rise-in { animation: rise-in 600ms cubic-bezier(.2,.8,.2,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
