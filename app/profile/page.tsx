@@ -11,20 +11,22 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.push("/auth");
         return;
       }
-      setUser(user);
-      setName(user.user_metadata?.full_name || "");
-      setAvatarUrl(user.user_metadata?.avatar_url || "https://api.dicebear.com/9.x/avataaars/svg?seed=OnAir");
+      setUser(session.user);
+      setSessionToken(session.access_token);
+      setName(session.user.user_metadata?.full_name || "");
+      setAvatarUrl(session.user.user_metadata?.avatar_url || "https://api.dicebear.com/9.x/avataaars/svg?seed=OnAir");
       
       // Fetch sync logs (mocked for now, as we'd need to query a logs table or tokens table)
       const { data: tokens } = await supabase.from("google_health_tokens").select("updated_at, scope").eq("user_id", user.id).maybeSingle();
@@ -118,7 +120,7 @@ export default function ProfilePage() {
         {/* Google Health Integration */}
         <div className="glass p-6 space-y-4">
           <h3 className="text-sm font-bold border-b border-white/10 pb-2 mb-4">Google Health Integration</h3>
-          <a href="/api/connect" className="block w-full text-center bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition">
+          <a href={`/api/connect?token=${sessionToken}`} className="block w-full text-center bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition">
             Reconnect Google Health
           </a>
 
