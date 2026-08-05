@@ -15,13 +15,12 @@ export default function Workouts() {
 
   useEffect(() => {
     setLoading(true);
-    // Let's show workouts for the week leading up to the selected date
+    // Fetch workouts for the selected date ONLY
     const end = new Date(selectedDate);
     end.setDate(end.getDate() + 1);
     const endStr = format(end, "yyyy-MM-dd");
     
     const start = new Date(selectedDate);
-    start.setDate(start.getDate() - 7);
     const startStr = format(start, "yyyy-MM-dd");
 
     supabase.from("workouts").select("*").gte("start_at", `${startStr}T00:00:00Z`).lt("start_at", `${endStr}T00:00:00Z`).order("start_at", { ascending: false })
@@ -34,12 +33,12 @@ export default function Workouts() {
   return (
     <>
       <Header title="Workouts" showDatePill={true} />
-      <div className="space-y-4 rise-in pb-32">
+      <div className="space-y-4 pb-32">
         {loading ? (
           <div className="flex justify-center items-center h-32"><div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div></div>
         ) : workouts.length === 0 ? (
           <div className="glass p-8 rounded-3xl text-center">
-            <p className="opacity-60">No workouts logged this week.</p>
+            <p className="opacity-60">No workouts logged for this day.</p>
           </div>
         ) : workouts.map((w) => (
           <div key={w.id} className="glass p-5 rounded-3xl flex flex-col gap-4 hover:scale-95 transition cursor-pointer">
