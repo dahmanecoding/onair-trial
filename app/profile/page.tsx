@@ -28,10 +28,20 @@ export default function ProfilePage() {
       setName(session.user.user_metadata?.full_name || "");
       setAvatarUrl(session.user.user_metadata?.avatar_url || "https://api.dicebear.com/9.x/avataaars/svg?seed=OnAir");
       
-      // Fetch sync logs (mocked for now, as we'd need to query a logs table or tokens table)
-      const { data: tokens } = await supabase.from("google_health_tokens").select("updated_at, scope").eq("user_id", user.id).maybeSingle();
-      if (tokens) {
-        setLogs([{ id: 1, time: new Date(tokens.updated_at).toLocaleString(), msg: "Successfully synced with Google Health" }]);
+      // Fetch REAL sync logs from the database
+      const { data: runs } = await supabase.from("sync_runs")
+        .select("created_at, status, error, records_upserted")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+        
+      if (runs && runs.length > 0) {
+        setLogs(runs.map((r, i) => ({
+          id: i,
+          time: new Date(r.created_at).toLocaleString(),
+          msg: r.status === "error" ? `Error: ${r.error}` : `Synced ${r.records_upserted} records`,
+          isError: r.status === "error"
+        })));
       }
     })();
   }, [router]);
@@ -80,7 +90,7 @@ export default function ProfilePage() {
     <>
       <Header title="Profile" showDatePill={false} />
       
-      <div className="space-y-6 rise-in pb-10">
+      <div className="space-y-6 pb-10">
         
         {/* Avatar Section */}
         <div className="glass p-6 flex flex-col items-center gap-4">
@@ -125,7 +135,22 @@ export default function ProfilePage() {
           </a>
 
           <div className="mt-6">
-            <h4 className="text-[10px] font-bold tracking-widest uppercase opacity-70 mb-2">Sync Logs</h4>
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-[10px] font-bold tracking-widest uppercase opacity-70">Sync Logs</h4>
+              <button 
+                onClick={async () => {
+                  try {
+                    await fetch("/api/sync", { method: "POST" });
+                    alert("Sync triggered! Refresh in a moment.");
+                  } catch (e) {
+                    alert("Failed to trigger sync");
+                  }
+                }}
+                className="text-[10px] font-bold tracking-widest uppercase text-accent bg-accent/20 px-2 py-1 rounded hover:bg-accent/30 transition"
+              >
+                Sync Now
+              </button>
+            </div>
             <div className="bg-black/30 rounded-xl p-4 font-mono text-[10px] h-32 overflow-y-auto space-y-2">
               {logs.length === 0 ? (
                 <span className="opacity-50">No recent sync logs.</span>
@@ -133,7 +158,7 @@ export default function ProfilePage() {
                 logs.map(log => (
                   <div key={log.id} className="border-b border-white/5 pb-2">
                     <span className="opacity-50">{log.time}</span>
-                    <p className="text-green-400 mt-1">{log.msg}</p>
+                    <p className={`mt-1 ${log.isError ? "text-red-400" : "text-green-400"}`}>{log.msg}</p>
                   </div>
                 ))
               )}
