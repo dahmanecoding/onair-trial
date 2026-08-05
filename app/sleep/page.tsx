@@ -16,13 +16,12 @@ export default function Sleep() {
   
   useEffect(() => {
     setLoading(true);
-    // Fetch sleep for the week up to the selected date
+    // Fetch sleep for the selected date ONLY
     const end = new Date(selectedDate);
     end.setDate(end.getDate() + 1);
     const endStr = format(end, "yyyy-MM-dd");
     
     const start = new Date(selectedDate);
-    start.setDate(start.getDate() - 7);
     const startStr = format(start, "yyyy-MM-dd");
 
     supabase.from("sleep_sessions").select("*").gte("end_at", `${startStr}T00:00:00Z`).lt("end_at", `${endStr}T00:00:00Z`).order("end_at", { ascending: false })
@@ -35,12 +34,12 @@ export default function Sleep() {
   return (
     <>
       <Header title="Sleep" showDatePill={true} />
-      <div className="space-y-4 rise-in pb-32">
+      <div className="space-y-4 pb-32">
         {loading ? (
           <div className="flex justify-center items-center h-32"><div className="w-8 h-8 border-4 border-[#51B0EA] border-t-transparent rounded-full animate-spin"></div></div>
         ) : sessions.length === 0 ? (
           <div className="glass p-8 rounded-3xl text-center">
-            <p className="opacity-60">No sleep data recorded this week.</p>
+            <p className="opacity-60">No sleep data recorded for this day.</p>
           </div>
         ) : sessions.map((s) => {
           const score = sleepScore(s);
